@@ -133,7 +133,7 @@ function countConfiguredCards(levels) {
             (groupTotal, group) =>
               groupTotal +
               (Array.isArray(group.cards)
-                ? group.cards.filter((card) => card.text?.trim() || card.image).length
+                ? group.cards.filter((card) => (card.text?.length ?? 0) > 0 || card.image).length
                 : 0),
             0
           )
@@ -143,7 +143,7 @@ function countConfiguredCards(levels) {
 }
 
 function getPlayableCards(group) {
-  return group.cards.filter((card) => card.text.trim() || card.image);
+  return group.cards.filter((card) => (card.text?.length ?? 0) > 0 || card.image);
 }
 
 function getObjectPosition(card) {
@@ -248,6 +248,7 @@ export default function App() {
   const bgmAudioRef = useRef(null);
   const levelTwoCircleInitRef = useRef(false);
   const levelTwoScaleInitRef = useRef(false);
+  const levelThreeScaleInitRef = useRef(false);
 
   const activeLevel = levels[activeLevelIndex] ?? levels[0];
   const activeGroup = activeLevel?.groups[activeGroupIndex] ?? activeLevel?.groups?.[0];
@@ -294,6 +295,25 @@ export default function App() {
               groups: level.groups.map((group) => ({
                 ...group,
                 cards: group.cards.map((card) => ({ ...card, imageScale: 1.1 })),
+              })),
+            }
+          : level
+      )
+    );
+  }, []);
+
+  useEffect(() => {
+    if (levelThreeScaleInitRef.current) return;
+    levelThreeScaleInitRef.current = true;
+
+    setLevels((prev) =>
+      prev.map((level, levelIndex) =>
+        levelIndex === 2
+          ? {
+              ...level,
+              groups: level.groups.map((group) => ({
+                ...group,
+                cards: group.cards.map((card) => ({ ...card, imageScale: 1.4 })),
               })),
             }
           : level
@@ -950,8 +970,9 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="config-groups">
-                    {level.groups.map((group, groupIndex) => (
+                  {level.visible === false ? null : (
+                    <div className="config-groups">
+                      {level.groups.map((group, groupIndex) => (
                       <section key={group.id} className="config-group-card nested-group-card">
                         <div className="config-group-header">
                           <input
@@ -986,8 +1007,8 @@ export default function App() {
                               <div
                                 className={
                                   card.shape === "circle"
-                                    ? "config-card-preview circle-card-preview"
-                                    : "config-card-preview"
+                                    ? `config-card-preview circle-card-preview${card.image ? " has-image" : ""}`
+                                    : `config-card-preview${card.image ? " has-image" : ""}`
                                 }
                               >
                                 {card.image ? (
@@ -1094,7 +1115,8 @@ export default function App() {
                         </div>
                       </section>
                     ))}
-                  </div>
+                    </div>
+                  )}
                 </section>
               ))}
             </div>
@@ -1168,7 +1190,7 @@ export default function App() {
                   }
                   style={{ "--fly-in-duration": `${entryAnimationMs}ms` }}
                 >
-                  <div className="card-image">
+                  <div className={card.image ? "card-image has-image" : "card-image"}>
                     {card.image ? (
                       <img
                         src={card.image}
