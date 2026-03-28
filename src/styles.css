@@ -189,12 +189,30 @@ h2 {
   margin-top: 22px;
 }
 
+.level-list {
+  display: grid;
+  gap: 26px;
+  margin-top: 24px;
+}
+
+.level-card {
+  padding: 22px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.nested-group-card {
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .config-group-card {
   padding: 20px;
 }
 
 .group-name-input,
-.field-block input[type="text"] {
+.field-block input[type="text"],
+.field-block select {
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.05);
@@ -255,6 +273,11 @@ h2 {
   height: 100%;
   object-fit: cover;
   object-position: center top;
+  transition: transform 180ms ease;
+}
+
+.circle-card-preview {
+  border-radius: 999px;
 }
 
 .draggable-image-frame {
@@ -418,6 +441,22 @@ h2 {
   text-shadow: 0 2px 10px rgba(129, 49, 10, 0.28);
 }
 
+.level-intro-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+  font-size: clamp(3.4rem, 10vw, 7rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #fff4df;
+  text-transform: uppercase;
+  text-shadow: 0 0 22px rgba(255, 150, 60, 0.48);
+  background: rgba(18, 13, 10, 0.24);
+  pointer-events: none;
+}
+
 .countdown-overlay {
   position: absolute;
   inset: 0;
@@ -430,6 +469,40 @@ h2 {
   text-shadow: 0 0 18px rgba(255, 150, 60, 0.55);
   background: rgba(18, 13, 10, 0.18);
   pointer-events: none;
+}
+
+.circle-card {
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  padding: 0;
+  max-width: 184px;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.circle-card .card-image {
+  border-radius: 999px;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+}
+
+.circle-card.active {
+  background: transparent;
+  border: 0;
+  box-shadow: 0 0 0 8px rgba(255, 178, 78, 0.72), 0 18px 30px rgba(255, 123, 42, 0.28);
+  transform: none;
+}
+
+.circle-card.active .card-image {
+  box-shadow: inset 0 0 0 3px rgba(255, 243, 224, 0.9);
+  filter: saturate(1.1) brightness(1.05);
+}
+
+.circle-card.active .card-image::after {
+  opacity: 0.36;
 }
 
 @keyframes cardSpinFlyIn {
@@ -448,6 +521,7 @@ h2 {
     transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
   }
 }
+
 
 @media (max-width: 860px) {
   .cards-grid {
