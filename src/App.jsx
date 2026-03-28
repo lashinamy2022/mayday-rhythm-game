@@ -9,14 +9,14 @@ const INITIAL_GROUPS = [
     id: crypto.randomUUID(),
     name: "第一组",
     cards: [
-      { id: crypto.randomUUID(), text: "阿信", image: "" },
-      { id: crypto.randomUUID(), text: "阿信", image: "" },
-      { id: crypto.randomUUID(), text: "阿萨", image: "" },
-      { id: crypto.randomUUID(), text: "阿娇", image: "" },
-      { id: crypto.randomUUID(), text: "", image: "" },
-      { id: crypto.randomUUID(), text: "", image: "" },
-      { id: crypto.randomUUID(), text: "", image: "" },
-      { id: crypto.randomUUID(), text: "", image: "" },
+      { id: crypto.randomUUID(), text: "阿信", image: "", imagePosition: { x: 50, y: 50 } },
+      { id: crypto.randomUUID(), text: "阿信", image: "", imagePosition: { x: 50, y: 50 } },
+      { id: crypto.randomUUID(), text: "阿萨", image: "", imagePosition: { x: 50, y: 50 } },
+      { id: crypto.randomUUID(), text: "阿娇", image: "", imagePosition: { x: 50, y: 50 } },
+      { id: crypto.randomUUID(), text: "", image: "", imagePosition: { x: 50, y: 50 } },
+      { id: crypto.randomUUID(), text: "", image: "", imagePosition: { x: 50, y: 50 } },
+      { id: crypto.randomUUID(), text: "", image: "", imagePosition: { x: 50, y: 50 } },
+      { id: crypto.randomUUID(), text: "", image: "", imagePosition: { x: 50, y: 50 } },
     ],
   },
 ];
@@ -34,7 +34,25 @@ function createCard() {
     id: crypto.randomUUID(),
     text: "",
     image: "",
+    imagePosition: { x: 50, y: 50 },
   };
+}
+
+function normalizeCard(card) {
+  return {
+    ...card,
+    image: typeof card.image === "string" ? card.image : "",
+    imagePosition: {
+      x: Number.isFinite(card.imagePosition?.x) ? card.imagePosition.x : 50,
+      y: Number.isFinite(card.imagePosition?.y) ? card.imagePosition.y : 50,
+    },
+  };
+}
+
+function getObjectPosition(card) {
+  const x = Math.max(0, Math.min(100, card.imagePosition?.x ?? 50));
+  const y = Math.max(0, Math.min(100, card.imagePosition?.y ?? 50));
+  return `${x}% ${y}%`;
 }
 
 function getPlayableCards(group) {
@@ -62,13 +80,14 @@ function normalizeInitialGroups(groups) {
   }
 
   return groups.map((group, index) => {
-    if (index !== 0 || group.name !== "第一组") {
-      return group;
-    }
-
+    const baseCards = Array.isArray(group.cards) ? group.cards : [];
+    const normalizedCards =
+      index === 0 && group.name === "第一组"
+        ? padCardsToEight(baseCards).map(normalizeCard)
+        : baseCards.map(normalizeCard);
     return {
       ...group,
-      cards: padCardsToEight(Array.isArray(group.cards) ? group.cards : []),
+      cards: normalizedCards,
     };
   });
 }
@@ -99,6 +118,7 @@ export default function App() {
   const playerLayoutRef = useRef(null);
   const revealTimerRef = useRef(null);
   const settleTimerRef = useRef(null);
+  const dragStateRef = useRef(null);
 
   const activeGroup = groups[activeGroupIndex] ?? groups[0];
   const visibleCards = getPlayableCards(activeGroup ?? { cards: [] });
@@ -276,6 +296,15 @@ export default function App() {
     );
   }
 
+  function updateCardImagePosition(groupId, cardId, imagePosition) {
+    updateGroup(groupId, (group) => ({
+      ...group,
+      cards: group.cards.map((card) =>
+        card.id === cardId ? { ...card, imagePosition } : card
+      ),
+    }));
+  }
+
   async function deleteUploadedImages(paths) {
     if (!Array.isArray(paths) || paths.length === 0) return;
 
@@ -379,13 +408,53 @@ export default function App() {
       updateGroup(groupId, (group) => ({
         ...group,
         cards: group.cards.map((card) =>
-          card.id === cardId ? { ...card, image: imagePath } : card
+          card.id === cardId
+            ? { ...card, image: imagePath, imagePosition: { x: 50, y: 50 } }
+            : card
         ),
       }));
     } catch (error) {
       console.error(error);
       window.alert("图片上传失败，请先启动上传服务后再试。");
     }
+  }
+
+  function handleImageDragStart(event, groupId, cardId) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    const previewRect = event.currentTarget.getBoundingClientRect();
+    const group = groups.find((item) => item.id === groupId);
+    const card = group?.cards.find((item) => item.id === cardId);
+    if (!card?.image) return;
+
+    dragStateRef.current = {
+      groupId,
+      cardId,
+      previewRect,
+      pointerId: event.pointerId,
+    };
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  }
+
+  function handleImageDragMove(event) {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const x = ((event.clientX - dragState.previewRect.left) / dragState.previewRect.width) * 100;
+    const y = ((event.clientY - dragState.previewRect.top) / dragState.previewRect.height) * 100;
+
+    updateCardImagePosition(dragState.groupId, dragState.cardId, {
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    });
+  }
+
+  function handleImageDragEnd(event) {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    dragStateRef.current = null;
   }
 
   function goToPlayer() {
@@ -556,7 +625,22 @@ export default function App() {
                     <article key={card.id} className="config-card-item">
                       <div className="config-card-preview">
                         {card.image ? (
-                          <img src={card.image} alt={card.text || `card-${cardIndex + 1}`} />
+                          <div
+                            className="draggable-image-frame"
+                            onPointerDown={(event) =>
+                              handleImageDragStart(event, group.id, card.id)
+                            }
+                            onPointerMove={handleImageDragMove}
+                            onPointerUp={handleImageDragEnd}
+                            onPointerCancel={handleImageDragEnd}
+                          >
+                            <img
+                              src={card.image}
+                              alt={card.text || `card-${cardIndex + 1}`}
+                              style={{ objectPosition: getObjectPosition(card) }}
+                            />
+                            <div className="drag-hint">拖动图片调整位置</div>
+                          </div>
                         ) : (
                           <div className="image-placeholder">上传图片</div>
                         )}
@@ -653,14 +737,18 @@ export default function App() {
                 >
                   <div className="card-image">
                     {card.image ? (
-                      <img src={card.image} alt={card.text} />
+                      <img
+                        src={card.image}
+                        alt={card.text}
+                        style={{ objectPosition: getObjectPosition(card) }}
+                      />
                     ) : (
                       <div className="image-placeholder text-only-placeholder">
                         {card.text}
                       </div>
                     )}
                   </div>
-                  <div className="card-title">{card.text}</div>
+                  {card.image ? <div className="card-title">{card.text}</div> : null}
                 </article>
               ))}
             </div>
