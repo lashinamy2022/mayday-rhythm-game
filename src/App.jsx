@@ -3,6 +3,9 @@ import { useEffect, useRef, useState } from "react";
 const STORAGE_KEY = "mayday-rhythm-game-groups";
 const ENTRY_SETTLE_MS = 0;
 const COUNTDOWN_AUDIO_SRC = "/audio/Countdown .m4a";
+const BGM4_AUDIO_SRC = "/audio/Bgm4.m4a";
+const BGM4_START_OFFSET_SEC = 2.0;
+const BGM4_END_TRIM_SEC = 2.1;
 
 const INITIAL_GROUPS = [
   {
@@ -123,6 +126,7 @@ export default function App() {
   const dragStateRef = useRef(null);
   const countdownTimerRef = useRef(null);
   const countdownAudioRef = useRef(null);
+  const bgmAudioRef = useRef(null);
 
   const activeGroup = groups[activeGroupIndex] ?? groups[0];
   const visibleCards = getPlayableCards(activeGroup ?? { cards: [] });
@@ -140,9 +144,25 @@ export default function App() {
     countdownAudio.preload = "auto";
     countdownAudioRef.current = countdownAudio;
 
+    const bgmAudio = new Audio(BGM4_AUDIO_SRC);
+    bgmAudio.preload = "auto";
+    bgmAudioRef.current = bgmAudio;
+
+    const stopBeforeTail = () => {
+      if (!Number.isFinite(bgmAudio.duration)) return;
+      if (bgmAudio.currentTime >= bgmAudio.duration - BGM4_END_TRIM_SEC) {
+        bgmAudio.pause();
+      }
+    };
+
+    bgmAudio.addEventListener("timeupdate", stopBeforeTail);
+
     return () => {
       countdownAudio.pause();
+      bgmAudio.pause();
+      bgmAudio.removeEventListener("timeupdate", stopBeforeTail);
       countdownAudioRef.current = null;
+      bgmAudioRef.current = null;
     };
   }, []);
 
@@ -244,9 +264,16 @@ export default function App() {
       countdownAudioRef.current.pause();
       countdownAudioRef.current.currentTime = 0;
     }
+    if (bgmAudioRef.current) {
+      bgmAudioRef.current.pause();
+      bgmAudioRef.current.currentTime = BGM4_START_OFFSET_SEC;
+    }
   }
 
   function beginGroupEntry(groupIndex) {
+    const isStartingFromFirstPlayableGroup =
+      !hasStartedPlayback && groupIndex === findFirstPlayableGroupIndex(groups);
+
     groupRef.current = groupIndex;
     playheadRef.current = -1;
     setActiveGroupIndex(groupIndex);
@@ -256,6 +283,12 @@ export default function App() {
     setIsPlaying(false);
     setIsEntering(true);
     setCountdownValue(null);
+
+    if (isStartingFromFirstPlayableGroup && bgmAudioRef.current) {
+      bgmAudioRef.current.pause();
+      bgmAudioRef.current.currentTime = BGM4_START_OFFSET_SEC;
+      bgmAudioRef.current.play().catch(() => {});
+    }
   }
 
   function startCountdown(groupIndex) {
@@ -272,6 +305,11 @@ export default function App() {
       countdownAudioRef.current.pause();
       countdownAudioRef.current.currentTime = 0;
       countdownAudioRef.current.play().catch(() => {});
+    }
+
+    if (bgmAudioRef.current) {
+      bgmAudioRef.current.pause();
+      bgmAudioRef.current.currentTime = BGM4_START_OFFSET_SEC;
     }
 
     let currentValue = 3;
@@ -542,6 +580,10 @@ export default function App() {
       countdownAudioRef.current.pause();
       countdownAudioRef.current.currentTime = 0;
     }
+    if (bgmAudioRef.current) {
+      bgmAudioRef.current.pause();
+      bgmAudioRef.current.currentTime = BGM4_START_OFFSET_SEC;
+    }
     setPage("player");
     setIsPlaying(false);
     setIsEntering(false);
@@ -571,6 +613,10 @@ export default function App() {
       countdownAudioRef.current.pause();
       countdownAudioRef.current.currentTime = 0;
     }
+    if (bgmAudioRef.current) {
+      bgmAudioRef.current.pause();
+      bgmAudioRef.current.currentTime = BGM4_START_OFFSET_SEC;
+    }
     setPage("config");
     setIsPlaying(false);
     setIsEntering(false);
@@ -594,6 +640,7 @@ export default function App() {
 
     if (isPlaying) {
       setIsPlaying(false);
+      bgmAudioRef.current?.pause();
       return;
     }
 
@@ -635,11 +682,13 @@ export default function App() {
         window.clearTimeout(settleTimerRef.current);
         settleTimerRef.current = null;
       }
+      bgmAudioRef.current?.pause();
       return;
     }
 
     if (hasStartedPlayback && revealedCount > 0 && revealedCount < visibleCards.length) {
       setIsEntering(true);
+      bgmAudioRef.current?.play().catch(() => {});
       return;
     }
 
@@ -649,6 +698,7 @@ export default function App() {
       return;
     }
 
+    bgmAudioRef.current?.play().catch(() => {});
     setIsPlaying(true);
   }
 
