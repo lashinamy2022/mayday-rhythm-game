@@ -2,11 +2,9 @@ import { useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "mayday-rhythm-game-levels";
 const LEGACY_STORAGE_KEY = "mayday-rhythm-game-groups";
-const ENTRY_SETTLE_MS = 0;
+const ENTRY_SETTLE_MS = 200;
 const COUNTDOWN_AUDIO_SRC = "/audio/Countdown .m4a";
-const BGM4_AUDIO_SRC = "/audio/Bgm4.m4a";
-const BGM4_START_OFFSET_SEC = 2.0;
-const BGM4_END_TRIM_SEC = 2.1;
+const BGM_AUDIO_SRC = "/audio/Bgm5.m4a";
 const DEFAULT_BPM = 165;
 const LEVEL_INTRO_MS = 1200;
 
@@ -21,7 +19,7 @@ function createCard() {
   };
 }
 
-function createGroup(name = "新的一组") {
+function createGroup(name = "New Group") {
   return {
     id: crypto.randomUUID(),
     name,
@@ -35,7 +33,7 @@ function createLevel(name = "Level 1", groupCount = 5) {
     name,
     visible: true,
     groups: Array.from({ length: groupCount }, (_, index) =>
-      createGroup(`第${index + 1}组`)
+      createGroup(`Group ${index + 1}`)
     ),
   };
 }
@@ -47,7 +45,7 @@ const INITIAL_LEVELS = [
     groups: [
       {
         id: crypto.randomUUID(),
-        name: "第一组",
+        name: "Group 1",
         cards: [
           { id: crypto.randomUUID(), text: "阿信", image: "", imagePosition: { x: 50, y: 50 } },
           { id: crypto.randomUUID(), text: "阿信", image: "", imagePosition: { x: 50, y: 50 } },
@@ -59,10 +57,10 @@ const INITIAL_LEVELS = [
           { id: crypto.randomUUID(), text: "", image: "", imagePosition: { x: 50, y: 50 } },
         ],
       },
-      createGroup("第二组"),
-      createGroup("第三组"),
-      createGroup("第四组"),
-      createGroup("第五组"),
+      createGroup("Group 2"),
+      createGroup("Group 3"),
+      createGroup("Group 4"),
+      createGroup("Group 5"),
     ],
   },
 ];
@@ -88,7 +86,7 @@ function padCardsToEight(cards) {
 function normalizeGroup(group) {
   return {
     ...group,
-    name: typeof group.name === "string" ? group.name : "新的一组",
+    name: typeof group.name === "string" ? group.name : "New Group",
     cards: padCardsToEight(Array.isArray(group.cards) ? group.cards : []).map(normalizeCard),
   };
 }
@@ -233,7 +231,6 @@ export default function App() {
   const [isEntering, setIsEntering] = useState(false);
   const [levelIntroValue, setLevelIntroValue] = useState(null);
   const [countdownValue, setCountdownValue] = useState(null);
-  const [bpm, setBpm] = useState(DEFAULT_BPM);
   const timerRef = useRef(null);
   const levelRef = useRef(0);
   const groupRef = useRef(0);
@@ -256,7 +253,7 @@ export default function App() {
   const hasPlayableGroups = levels.some((level) =>
     level.visible !== false && level.groups.some((group) => getPlayableCards(group).length > 0)
   );
-  const stepMs = Math.round((60 / bpm) * 1000);
+  const stepMs = Math.round((60 / DEFAULT_BPM) * 1000);
   const entryRevealMs = Math.max(140, Math.round(stepMs * 0.72));
   const entryAnimationMs = Math.max(entryRevealMs + 220, Math.round(stepMs * 1.9));
 
@@ -326,23 +323,13 @@ export default function App() {
     countdownAudio.preload = "auto";
     countdownAudioRef.current = countdownAudio;
 
-    const bgmAudio = new Audio(BGM4_AUDIO_SRC);
+    const bgmAudio = new Audio(BGM_AUDIO_SRC);
     bgmAudio.preload = "auto";
     bgmAudioRef.current = bgmAudio;
-
-    const stopBeforeTail = () => {
-      if (!Number.isFinite(bgmAudio.duration)) return;
-      if (bgmAudio.currentTime >= bgmAudio.duration - BGM4_END_TRIM_SEC) {
-        bgmAudio.pause();
-      }
-    };
-
-    bgmAudio.addEventListener("timeupdate", stopBeforeTail);
 
     return () => {
       countdownAudio.pause();
       bgmAudio.pause();
-      bgmAudio.removeEventListener("timeupdate", stopBeforeTail);
       countdownAudioRef.current = null;
       bgmAudioRef.current = null;
     };
@@ -420,7 +407,7 @@ export default function App() {
     if (!bgmAudioRef.current) return;
     bgmAudioRef.current.pause();
     if (resetToStart) {
-      bgmAudioRef.current.currentTime = BGM4_START_OFFSET_SEC;
+      bgmAudioRef.current.currentTime = 0;
     }
   }
 
@@ -505,7 +492,7 @@ export default function App() {
 
     if (restartBgm && bgmAudioRef.current) {
       bgmAudioRef.current.pause();
-      bgmAudioRef.current.currentTime = BGM4_START_OFFSET_SEC;
+      bgmAudioRef.current.currentTime = 0;
       bgmAudioRef.current.play().catch(() => {});
     }
   }
@@ -597,7 +584,7 @@ export default function App() {
           return;
         }
 
-        beginGroupEntry(nextPosition.levelIndex, nextPosition.groupIndex);
+        beginGroupEntry(nextPosition.levelIndex, nextPosition.groupIndex, { restartBgm: true });
         return;
       }
 
@@ -617,7 +604,7 @@ export default function App() {
           return;
         }
 
-        beginGroupEntry(nextPosition.levelIndex, nextPosition.groupIndex);
+        beginGroupEntry(nextPosition.levelIndex, nextPosition.groupIndex, { restartBgm: true });
         return;
       }
 
@@ -662,7 +649,7 @@ export default function App() {
   function handleAddGroup(levelId) {
     updateLevel(levelId, (level) => ({
       ...level,
-      groups: [...level.groups, createGroup(`第${level.groups.length + 1}组`)],
+      groups: [...level.groups, createGroup(`Group ${level.groups.length + 1}`)],
     }));
   }
 
@@ -770,7 +757,7 @@ export default function App() {
       }));
     } catch (error) {
       console.error(error);
-      window.alert("图片上传失败，请先启动上传服务后再试。");
+      window.alert("Image upload failed. Please start the upload server and try again.");
     }
   }
 
@@ -913,25 +900,25 @@ export default function App() {
               onClick={goToConfig}
               className={page === "config" ? "mode-button active" : "mode-button"}
             >
-              配置页
+              Config
             </button>
             <button
               type="button"
               onClick={goToPlayer}
               className={page === "player" ? "mode-button active" : "mode-button"}
             >
-              播放页
+              Player
             </button>
           </div>
 
           <section className="config-layout">
             <div className="section-header">
               <div>
-                <h2>关卡配置</h2>
-                <p>先设置 Level，再为每个 Level 配自己的五组词卡与图片。</p>
+                <h2>Level Setup</h2>
+                <p>Set up each level first, then configure its groups, cards, and images.</p>
               </div>
               <button type="button" className="play-button" onClick={handleAddLevel}>
-                新增 Level
+                Add Level
               </button>
             </div>
 
@@ -951,21 +938,21 @@ export default function App() {
                         className="ghost-button"
                         onClick={() => handleLevelVisibilityToggle(level.id)}
                       >
-                        {level.visible === false ? "显示" : "隐藏"}
+                        {level.visible === false ? "Show" : "Hide"}
                       </button>
                       <button
                         type="button"
                         className="ghost-button"
                         onClick={() => handleAddGroup(level.id)}
                       >
-                        新增一组
+                        Add Group
                       </button>
                       <button
                         type="button"
                         className="ghost-button danger"
                         onClick={() => handleRemoveLevel(level.id)}
                       >
-                        删除 Level
+                        Delete Level
                       </button>
                     </div>
                   </div>
@@ -981,7 +968,7 @@ export default function App() {
                             onChange={(event) =>
                               handleGroupNameChange(level.id, group.id, event.target.value)
                             }
-                            placeholder={`第${groupIndex + 1}组`}
+                            placeholder={`Group ${groupIndex + 1}`}
                           />
                           <div className="group-actions">
                             <button
@@ -989,14 +976,14 @@ export default function App() {
                               className="ghost-button"
                               onClick={() => handleAddCard(level.id, group.id)}
                             >
-                              新增词卡
+                              Add Card
                             </button>
                             <button
                               type="button"
                               className="ghost-button danger"
                               onClick={() => handleRemoveGroup(level.id, group.id)}
                             >
-                              删除本组
+                              Delete Group
                             </button>
                           </div>
                         </div>
@@ -1029,16 +1016,16 @@ export default function App() {
                                         transform: `scale(${getImageScale(card)})`,
                                       }}
                                     />
-                                    <div className="drag-hint">拖动图片调整位置</div>
+                                    <div className="drag-hint">Drag to adjust image position</div>
                                   </div>
                                 ) : (
-                                  <div className="image-placeholder">上传图片</div>
+                                  <div className="image-placeholder">Upload Image</div>
                                 )}
                               </div>
 
                               <div className="config-card-fields">
                                 <label className="field-block">
-                                  <span>词语</span>
+                                  <span>Text</span>
                                   <input
                                     type="text"
                                     value={card.text}
@@ -1050,12 +1037,12 @@ export default function App() {
                                         event.target.value
                                       )
                                     }
-                                    placeholder="输入这一拍显示的词"
+                                    placeholder="Enter the word shown on this beat"
                                   />
                                 </label>
 
                                 <label className="field-block">
-                                  <span>图片</span>
+                                  <span>Image</span>
                                   <input
                                     type="file"
                                     accept="image/*"
@@ -1066,7 +1053,7 @@ export default function App() {
                                 </label>
 
                                 <label className="field-block">
-                                  <span>形状</span>
+                                  <span>Shape</span>
                                   <select
                                     value={card.shape}
                                     onChange={(event) =>
@@ -1078,13 +1065,13 @@ export default function App() {
                                       )
                                     }
                                   >
-                                    <option value="square">方形</option>
-                                    <option value="circle">圆形</option>
+                                    <option value="square">Square</option>
+                                    <option value="circle">Circle</option>
                                   </select>
                                 </label>
 
                                 <label className="field-block">
-                                  <span>图片大小 {getImageScale(card).toFixed(2)}x</span>
+                                  <span>Image Scale {getImageScale(card).toFixed(2)}x</span>
                                   <input
                                     type="range"
                                     min="0.8"
@@ -1107,7 +1094,7 @@ export default function App() {
                                   className="ghost-button danger"
                                   onClick={() => handleRemoveCard(level.id, group.id, card.id)}
                                 >
-                                  删除这张词卡
+                                  Delete Card
                                 </button>
                               </div>
                             </article>
@@ -1131,14 +1118,14 @@ export default function App() {
                 onClick={goToConfig}
                 className={page === "config" ? "mode-button active" : "mode-button"}
               >
-                配置页
+                Config
               </button>
               <button
                 type="button"
                 onClick={goToPlayer}
                 className={page === "player" ? "mode-button active" : "mode-button"}
               >
-                播放页
+                Player
               </button>
               <div className="controls player-controls">
                 <button
@@ -1159,17 +1146,6 @@ export default function App() {
                   Restart
                 </button>
 
-                <label className="bpm-control">
-                  <span>BPM {bpm}</span>
-                  <input
-                    type="range"
-                    min="120"
-                    max="200"
-                    step="1"
-                    value={bpm}
-                    onChange={(event) => setBpm(Number(event.target.value))}
-                  />
-                </label>
               </div>
             </div>
           ) : null}
