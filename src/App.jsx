@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "mayday-rhythm-game-groups";
-const FIXED_BPM = 180;
 const ENTRY_SETTLE_MS = 0;
 const COUNTDOWN_AUDIO_SRC = "/audio/Countdown .m4a";
 
@@ -114,6 +113,7 @@ export default function App() {
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
   const [isEntering, setIsEntering] = useState(false);
   const [countdownValue, setCountdownValue] = useState(null);
+  const [bpm, setBpm] = useState(165);
   const timerRef = useRef(null);
   const groupRef = useRef(0);
   const playheadRef = useRef(-1);
@@ -127,7 +127,9 @@ export default function App() {
   const activeGroup = groups[activeGroupIndex] ?? groups[0];
   const visibleCards = getPlayableCards(activeGroup ?? { cards: [] });
   const hasPlayableGroups = groups.some((group) => getPlayableCards(group).length > 0);
-  const stepMs = Math.round((60 / FIXED_BPM) * 1000);
+  const stepMs = Math.round((60 / bpm) * 1000);
+  const entryRevealMs = Math.max(140, Math.round(stepMs * 0.72));
+  const entryAnimationMs = Math.max(entryRevealMs + 220, Math.round(stepMs * 1.9));
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(groups));
@@ -177,8 +179,7 @@ export default function App() {
       return undefined;
     }
 
-    setRevealedCount(0);
-    let nextCount = 0;
+    let nextCount = revealedCount;
 
     revealTimerRef.current = window.setInterval(() => {
       nextCount += 1;
@@ -196,7 +197,7 @@ export default function App() {
           setIsPlaying(true);
         }, ENTRY_SETTLE_MS);
       }
-    }, 220);
+    }, entryRevealMs);
 
     return () => {
       if (revealTimerRef.current) {
@@ -204,7 +205,15 @@ export default function App() {
         revealTimerRef.current = null;
       }
     };
-  }, [activeGroupIndex, hasStartedPlayback, isEntering, page, visibleCards.length]);
+  }, [
+    activeGroupIndex,
+    entryRevealMs,
+    hasStartedPlayback,
+    isEntering,
+    page,
+    revealedCount,
+    visibleCards.length,
+  ]);
 
   function resetPlaybackPosition() {
     const firstPlayableGroupIndex = findFirstPlayableGroupIndex(groups);
@@ -629,6 +638,11 @@ export default function App() {
       return;
     }
 
+    if (hasStartedPlayback && revealedCount > 0 && revealedCount < visibleCards.length) {
+      setIsEntering(true);
+      return;
+    }
+
     const shouldStartFromBeginning = playheadRef.current < 0 && revealedCount === 0;
     if (shouldStartFromBeginning || !hasStartedPlayback) {
       startCountdown(groupRef.current);
@@ -801,6 +815,18 @@ export default function App() {
               >
                 Restart
               </button>
+
+              <label className="bpm-control">
+                <span>BPM {bpm}</span>
+                <input
+                  type="range"
+                  min="120"
+                  max="200"
+                  step="1"
+                  value={bpm}
+                  onChange={(event) => setBpm(Number(event.target.value))}
+                />
+              </label>
             </div>
           </div>
 
@@ -817,6 +843,7 @@ export default function App() {
                       ? "rhythm-card spin-fly-in active"
                       : "rhythm-card spin-fly-in"
                   }
+                  style={{ "--fly-in-duration": `${entryAnimationMs}ms` }}
                 >
                   <div className="card-image">
                     {card.image ? (
