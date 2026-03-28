@@ -138,6 +138,26 @@ h2 {
   gap: 14px;
 }
 
+.bpm-control {
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+  padding: 10px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff7eb;
+}
+
+.bpm-control span {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.bpm-control input[type="range"] {
+  width: 100%;
+}
+
 .player-toolbar-row {
   margin-bottom: 0;
 }
@@ -340,7 +360,8 @@ h2 {
 .spin-fly-in {
   opacity: 0;
   transform-origin: center center;
-  animation: cardSpinFlyIn 720ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: cardSpinFlyIn var(--fly-in-duration, 720ms) cubic-bezier(0.2, 0.8, 0.2, 1)
+    forwards;
 }
 
 .image-placeholder {
@@ -362,8 +383,10 @@ h2 {
   font-size: 3rem;
   font-weight: 700;
   text-align: center;
-  line-height: 1.3;
+  line-height: 1.15;
   letter-spacing: 0.24em;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   background:
     linear-gradient(180deg, rgba(28, 22, 16, 0.04), rgba(28, 22, 16, 0.34)),
     linear-gradient(135deg, #f3e3d4, #d7d7d7);
@@ -381,6 +404,9 @@ h2 {
   font-weight: 700;
   color: #fffaf3;
   letter-spacing: 0.2em;
+  line-height: 1.05;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   text-shadow: 0 4px 18px rgba(0, 0, 0, 0.58);
   z-index: 1;
   transition: color 180ms ease, text-shadow 180ms ease;
@@ -390,6 +416,20 @@ h2 {
 .rhythm-card.active .text-only-placeholder {
   color: #fffaf3;
   text-shadow: 0 2px 10px rgba(129, 49, 10, 0.28);
+}
+
+.countdown-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+  font-size: clamp(5rem, 16vw, 10rem);
+  font-weight: 800;
+  color: #fff4df;
+  text-shadow: 0 0 18px rgba(255, 150, 60, 0.55);
+  background: rgba(18, 13, 10, 0.18);
+  pointer-events: none;
 }
 
 @keyframes cardSpinFlyIn {
