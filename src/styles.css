@@ -266,6 +266,11 @@ h2 {
   background: linear-gradient(135deg, #f3e3d4, #d7d7d7);
 }
 
+.config-card-preview.has-image,
+.card-image.has-image {
+  background: #ffffff;
+}
+
 .config-card-preview img,
 .card-image img {
   display: block;
@@ -286,6 +291,7 @@ h2 {
   height: 100%;
   cursor: grab;
   touch-action: none;
+  background: #ffffff;
 }
 
 .draggable-image-frame:active {
