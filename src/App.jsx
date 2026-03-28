@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 const STORAGE_KEY = "mayday-rhythm-game-groups";
 const FIXED_BPM = 180;
 const ENTRY_SETTLE_MS = 0;
+const COUNTDOWN_AUDIO_SRC = "/audio/Countdown .m4a";
 
 const INITIAL_GROUPS = [
   {
@@ -112,6 +113,7 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
   const [isEntering, setIsEntering] = useState(false);
+  const [countdownValue, setCountdownValue] = useState(null);
   const timerRef = useRef(null);
   const groupRef = useRef(0);
   const playheadRef = useRef(-1);
@@ -119,6 +121,8 @@ export default function App() {
   const revealTimerRef = useRef(null);
   const settleTimerRef = useRef(null);
   const dragStateRef = useRef(null);
+  const countdownTimerRef = useRef(null);
+  const countdownAudioRef = useRef(null);
 
   const activeGroup = groups[activeGroupIndex] ?? groups[0];
   const visibleCards = getPlayableCards(activeGroup ?? { cards: [] });
@@ -128,6 +132,17 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(groups));
   }, [groups]);
+
+  useEffect(() => {
+    const countdownAudio = new Audio(COUNTDOWN_AUDIO_SRC);
+    countdownAudio.preload = "auto";
+    countdownAudioRef.current = countdownAudio;
+
+    return () => {
+      countdownAudio.pause();
+      countdownAudioRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (page !== "player") return;
@@ -203,6 +218,7 @@ export default function App() {
     setIsEntering(false);
     setIsPlaying(false);
     setHasStartedPlayback(false);
+    setCountdownValue(null);
     if (revealTimerRef.current) {
       window.clearInterval(revealTimerRef.current);
       revealTimerRef.current = null;
@@ -210,6 +226,14 @@ export default function App() {
     if (settleTimerRef.current) {
       window.clearTimeout(settleTimerRef.current);
       settleTimerRef.current = null;
+    }
+    if (countdownTimerRef.current) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    if (countdownAudioRef.current) {
+      countdownAudioRef.current.pause();
+      countdownAudioRef.current.currentTime = 0;
     }
   }
 
@@ -222,6 +246,39 @@ export default function App() {
     setHasStartedPlayback(true);
     setIsPlaying(false);
     setIsEntering(true);
+    setCountdownValue(null);
+  }
+
+  function startCountdown(groupIndex) {
+    if (countdownTimerRef.current) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+
+    setCountdownValue(3);
+    setIsPlaying(false);
+    setIsEntering(false);
+
+    if (countdownAudioRef.current) {
+      countdownAudioRef.current.pause();
+      countdownAudioRef.current.currentTime = 0;
+      countdownAudioRef.current.play().catch(() => {});
+    }
+
+    let currentValue = 3;
+    countdownTimerRef.current = window.setInterval(() => {
+      currentValue -= 1;
+
+      if (currentValue > 0) {
+        setCountdownValue(currentValue);
+        return;
+      }
+
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+      setCountdownValue(null);
+      beginGroupEntry(groupIndex);
+    }, 1000);
   }
 
   useEffect(() => {
@@ -468,10 +525,19 @@ export default function App() {
       window.clearTimeout(settleTimerRef.current);
       settleTimerRef.current = null;
     }
+    if (countdownTimerRef.current) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    if (countdownAudioRef.current) {
+      countdownAudioRef.current.pause();
+      countdownAudioRef.current.currentTime = 0;
+    }
     setPage("player");
     setIsPlaying(false);
     setIsEntering(false);
     setHasStartedPlayback(false);
+    setCountdownValue(null);
     setActiveGroupIndex(startIndex);
     setActiveIndex(-1);
     setRevealedCount(0);
@@ -488,21 +554,35 @@ export default function App() {
       window.clearTimeout(settleTimerRef.current);
       settleTimerRef.current = null;
     }
+    if (countdownTimerRef.current) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    if (countdownAudioRef.current) {
+      countdownAudioRef.current.pause();
+      countdownAudioRef.current.currentTime = 0;
+    }
     setPage("config");
     setIsPlaying(false);
     setIsEntering(false);
     setHasStartedPlayback(false);
     setRevealedCount(0);
+    setCountdownValue(null);
   }
 
   function handleRestart() {
     resetPlaybackPosition();
     const firstPlayableGroupIndex = findFirstPlayableGroupIndex(groups);
     const startIndex = firstPlayableGroupIndex >= 0 ? firstPlayableGroupIndex : 0;
-    beginGroupEntry(startIndex);
+    startCountdown(startIndex);
   }
 
   function togglePlayback() {
+    if (countdownValue !== null) {
+      resetPlaybackPosition();
+      return;
+    }
+
     if (isPlaying) {
       setIsPlaying(false);
       return;
@@ -551,7 +631,7 @@ export default function App() {
 
     const shouldStartFromBeginning = playheadRef.current < 0 && revealedCount === 0;
     if (shouldStartFromBeginning || !hasStartedPlayback) {
-      beginGroupEntry(groupRef.current);
+      startCountdown(groupRef.current);
       return;
     }
 
@@ -725,6 +805,9 @@ export default function App() {
           </div>
 
           <section ref={playerLayoutRef} className="player-layout">
+            {countdownValue !== null ? (
+              <div className="countdown-overlay">{countdownValue}</div>
+            ) : null}
             <div className="cards-grid">
               {visibleCards.slice(0, revealedCount).map((card, index) => (
                 <article

@@ -392,6 +392,20 @@ h2 {
   text-shadow: 0 2px 10px rgba(129, 49, 10, 0.28);
 }
 
+.countdown-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+  font-size: clamp(5rem, 16vw, 10rem);
+  font-weight: 800;
+  color: #fff4df;
+  text-shadow: 0 0 18px rgba(255, 150, 60, 0.55);
+  background: rgba(18, 13, 10, 0.18);
+  pointer-events: none;
+}
+
 @keyframes cardSpinFlyIn {
   0% {
     opacity: 0;
