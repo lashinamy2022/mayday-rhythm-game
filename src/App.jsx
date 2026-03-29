@@ -548,8 +548,7 @@ export default function App() {
     }
 
     let nextCount = revealedCount;
-
-    revealTimerRef.current = window.setInterval(() => {
+    const revealNextCard = () => {
       nextCount += 1;
       setRevealedCount(nextCount);
 
@@ -565,7 +564,17 @@ export default function App() {
           setIsPlaying(true);
         }, ENTRY_SETTLE_MS);
       }
-    }, entryRevealMs);
+    };
+
+    if (revealedCount === 0) {
+      revealNextCard();
+
+      if (nextCount >= visibleCards.length) {
+        return undefined;
+      }
+    }
+
+    revealTimerRef.current = window.setInterval(revealNextCard, entryRevealMs);
 
     return () => {
       if (revealTimerRef.current) {
