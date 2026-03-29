@@ -5,6 +5,7 @@ const LEGACY_STORAGE_KEY = "mayday-rhythm-game-groups";
 const ENTRY_SETTLE_MS = 200;
 const COUNTDOWN_AUDIO_SRC = "/audio/Countdown .m4a";
 const BGM_AUDIO_SRC = "/audio/Bgm5.m4a";
+const ENDING_VIDEO_SRC = "/video/FallInLoveING.mp4";
 const DEFAULT_BPM = 165;
 const LEVEL_INTRO_MS = 1200;
 
@@ -410,6 +411,7 @@ export default function App() {
   const [isEntering, setIsEntering] = useState(false);
   const [levelIntroValue, setLevelIntroValue] = useState(null);
   const [countdownValue, setCountdownValue] = useState(null);
+  const [showEndingVideo, setShowEndingVideo] = useState(false);
   const timerRef = useRef(null);
   const levelRef = useRef(0);
   const groupRef = useRef(0);
@@ -630,6 +632,7 @@ export default function App() {
     setHasStartedPlayback(false);
     setLevelIntroValue(null);
     setCountdownValue(null);
+    setShowEndingVideo(false);
     if (revealTimerRef.current) {
       window.clearInterval(revealTimerRef.current);
       revealTimerRef.current = null;
@@ -668,6 +671,7 @@ export default function App() {
     setIsEntering(true);
     setLevelIntroValue(null);
     setCountdownValue(null);
+    setShowEndingVideo(false);
 
     if (restartBgm && bgmAudioRef.current) {
       bgmAudioRef.current.pause();
@@ -698,6 +702,7 @@ export default function App() {
     setHasStartedPlayback(false);
     setLevelIntroValue(levels[levelIndex]?.name ?? `Level ${levelIndex + 1}`);
     setCountdownValue(null);
+    setShowEndingVideo(false);
 
     if (countdownAudioRef.current) {
       countdownAudioRef.current.pause();
@@ -754,7 +759,8 @@ export default function App() {
 
         if (!nextPosition) {
           setIsPlaying(false);
-          resetPlaybackPosition();
+          stopBgm(true);
+          setShowEndingVideo(true);
           return;
         }
 
@@ -774,7 +780,8 @@ export default function App() {
 
         if (!nextPosition) {
           setIsPlaying(false);
-          resetPlaybackPosition();
+          stopBgm(true);
+          setShowEndingVideo(true);
           return;
         }
 
@@ -992,6 +999,7 @@ export default function App() {
     setHasStartedPlayback(false);
     setLevelIntroValue(null);
     setCountdownValue(null);
+    setShowEndingVideo(false);
     setActiveLevelIndex(firstPlayable.levelIndex);
     setActiveGroupIndex(firstPlayable.groupIndex);
     setActiveIndex(-1);
@@ -1010,6 +1018,7 @@ export default function App() {
     setRevealedCount(0);
     setLevelIntroValue(null);
     setCountdownValue(null);
+    setShowEndingVideo(false);
   }
 
   function handleRestart() {
@@ -1332,7 +1341,16 @@ export default function App() {
           <section ref={playerLayoutRef} className="player-layout">
             {levelIntroValue !== null ? <div className="level-intro-overlay">{levelIntroValue}</div> : null}
             {countdownValue !== null ? <div className="countdown-overlay">{countdownValue}</div> : null}
-            {!hideCardsForStageOverlay ? (
+            {showEndingVideo ? (
+              <video
+                key={ENDING_VIDEO_SRC}
+                className="ending-video"
+                src={ENDING_VIDEO_SRC}
+                autoPlay
+                playsInline
+                controls
+              />
+            ) : !hideCardsForStageOverlay ? (
               <div className="cards-grid">
                 {visibleCards.slice(0, revealedCount).map((card, index) => {
                   return (
